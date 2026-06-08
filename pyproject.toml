@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flash-attention-rtl"
+version = "0.1.0"
+description = "FlashAttention Hardware RTL with Systolic Array"
+authors = [{name = "FlashAttention RTL Team"}]
+requires-python = ">=3.8"
+
+dependencies = [
+    "cocotb>=1.7.0",
+    "cocotb-test>=0.2.0",
+    "numpy>=1.20.0",
+    "pytest>=6.0.0",
+]
+
+[tool.cocotb]
+simulator = "verilator"
+verilog_sources = [
+    "rtl/src/processing_element.sv",
+    "rtl/src/systolic_array.sv",
+]
+toplevel = "systolic_array"
