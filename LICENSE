@@ -1,0 +1,50 @@
+MIT License
+
+Copyright (c) 2024 Ahmad Ali Parr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+ORIGINAL PROJECT ATTRIBUTION:
+
+Original FlashAttention RTL implementation and design:
+- Systolic Array architecture in SystemVerilog
+- Cocotb testbench framework setup
+- Golden model reference implementation
+
+Original work from flash-attention-rtl repository (prior to SUBLEQ refactor).
+
+---
+
+SUBLEQ + φ-Born Attention Layer:
+
+Author: Ahmad Ali Parr
+Description: Deterministic attention mechanism based on SUBLEQ instruction set
+            and golden-ratio-weighted action selection
+
+Key contributions:
+- Consolidated SUBLEQ interpreter with formal correctness proofs
+- φ-Born (PBI) multi-head attention mechanism
+- Brainfuck ↔ SUBLEQ-J bidirectional transpilers
+- Formal verification of determinism, termination, type safety, and TC completeness
+- Agent architecture for bounded autonomous execution
+- J-array semantics for dynamic memory indexing
+
+All new work is made available under the MIT License above.
