@@ -1,6 +1,7 @@
 # Nim compiled binaries
 refuge
 test_bf_to_subleq_j
+consolidated_agent
 
 # Runtime artifacts
 *.chk
