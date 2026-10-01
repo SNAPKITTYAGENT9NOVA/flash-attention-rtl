@@ -1,0 +1,23 @@
+# Nim compiled binaries
+refuge
+test_bf_to_subleq_j
+consolidated_agent
+
+# Runtime artifacts
+*.chk
+refuge.chk
+
+# Build artifacts
+nimcache/
+*.o
+*.a
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
