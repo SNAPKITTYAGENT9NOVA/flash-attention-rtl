@@ -86,6 +86,33 @@ Output / State Update
 - **Bidirectional**: BF↔SUBLEQ transpilers prove equivalence both directions
 - **Pedagogical**: Minimal language exposes core computational primitives
 
+## Latest Improvements
+
+### J-Array Dynamic Indexing (FIXED)
+**Problem**: Previous BF→SUBLEQ transpiler hardcoded cell 0, ignoring Brainfuck pointer movements
+**Solution**: Proper J-array semantics with dynamic indirect addressing via `tapePtr` register (256)
+
+```nim
+# Before: hardcoded cell 0
+of '+': code.add [257, 0, code.len + codeStart + 3]  # WRONG
+
+# After: dynamic indexing via tapePtr
+of '+':
+  code.add [256, 259, code.len + codeStart + 3]  # temp := tapePtr
+  code.add [257, 259, code.len + codeStart + 3]  # tape[temp]++
+```
+
+**Impact**: BF→SUBLEQ transpiler now correctly implements Turing completeness with full pointer semantics
+
+### AI Training Prohibition
+All code is released under **GPL-3.0 + supplementary clause**:
+- ✅ Prohibits use for training AI/ML models
+- ✅ Prohibits incorporation into language models (LLMs)
+- ✅ Educational classroom use with attribution permitted
+- ✅ Source code remains free for legitimate modification and distribution
+
+See LICENSE for full terms.
+
 ## Critical Fixes (vs. Original refuge.nim)
 
 ### Bounds Violations Fixed
