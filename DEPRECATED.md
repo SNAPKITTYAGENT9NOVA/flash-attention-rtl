@@ -38,8 +38,7 @@
 - ✅ Standard SUBLEQ halt semantics
 - ✅ True determinism (no RNG in critical path)
 - ✅ Complete BF↔SUBLEQ-J transpilers with dynamic indexing
-- ✅ 57% code reduction (660 → 285 lines)
-- ✅ All formal properties proven
+- ✅ Transpiler + interpreter moved to `subleq_bf.nim` with differential tests
 
 ### Why Keep It?
 
@@ -50,14 +49,10 @@
 
 ## test_bf_to_subleq_j.nim
 
-**Status**: ✅ VERIFIED - Test suite for consolidated agent
+**Status**: ✅ Rewritten - differential tests of the BF→SUBLEQ transpiler (`subleq_bf.nim`)
 
-This file remains current and is actively used for:
-- Validating BF→SUBLEQ-J compiler determinism
-- Testing round-trip consistency
-- Verifying memory layout correctness
-
-No changes needed.
+Compiles BF programs, runs them on the SUBLEQ interpreter and compares output, tape and pointer
+with a reference BF interpreter (hand-written cases plus deterministic fuzzing).
 
 ## SIMULATION_SETUP.md
 
@@ -104,9 +99,7 @@ Kept for:
 
 ### If You Were Using Test Suite:
 
-- `test_bf_to_subleq_j.nim` is unchanged
-- Run against `consolidated_agent.nim` memory layout
-- All tests still pass
+- `test_bf_to_subleq_j.nim` now imports `subleq_bf.nim` and runs real differential tests
 
 ---
 

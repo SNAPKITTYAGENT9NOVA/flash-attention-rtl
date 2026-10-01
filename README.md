@@ -7,8 +7,8 @@ A formally-verified deterministic attention mechanism built on **SUBLEQ** (singl
 This project demonstrates:
 - **SUBLEQ core**: Ultra-minimal Turing-complete instruction (subtraction + conditional branch)
 - **φ-Born attention**: Golden-ratio weighted deterministic action selection
-- **Brainfuck ↔ SUBLEQ transpilers**: Bidirectional, deterministic, TC-complete
-- **Formal correctness**: All properties proven (determinism, termination, safety, TC)
+- **Brainfuck → SUBLEQ transpiler**: deterministic, self-modifying SUBLEQ with indexed tape access, differentially tested against a reference BF interpreter
+- **Determinism and bounded execution**: no RNG, step-limited interpreter; the transpiler is tested, not formally proven
 - **Deterministic autonomy**: Attention-driven tactical agent with bounded cycles
 
 ## Quick Start
@@ -22,18 +22,19 @@ nim c -d:release consolidated_agent.nim
 ```
 
 **Status**: ✅ **Production-ready**
-- 285 lines of deterministic code
-- Bounds-checked SUBLEQ interpreter
-- Complete BF↔SUBLEQ-J transpilers
-- Nim range types for compile-time safety
+- Deterministic code, no RNG
+- Bounds-checked SUBLEQ interpreter (`subleq_bf.nim`)
+- BF→SUBLEQ transpiler with real pointer-indexed tape access
+- Differential test suite (see Testing)
 
 ### Legacy Code
 
 | File | Status | Notes |
 |------|--------|-------|
-| `consolidated_agent.nim` | ✅ VERIFIED | Main implementation - use this |
+| `consolidated_agent.nim` | ✅ | φ-Born agent loop; imports `subleq_bf.nim` |
+| `subleq_bf.nim` | ✅ TESTED | SUBLEQ interpreter, BF→SUBLEQ transpiler, reference BF interpreter |
 | `refuge.nim` | ❌ DEPRECATED | Contains critical bounds violations, false TC claims |
-| `test_bf_to_subleq_j.nim` | ✅ VERIFIED | Test suite validating BF→SUBLEQ-J determinism |
+| `test_bf_to_subleq_j.nim` | ✅ | Differential tests: compiled SUBLEQ vs reference BF (output, tape, pointer) |
 
 ## Architecture
 
@@ -58,10 +59,10 @@ Output / State Update
 | Property | Status | Evidence |
 |----------|--------|----------|
 | **Determinism** | ✅ Proven | No RNG in critical path; pure functions only |
-| **Termination** | ✅ Proven | Bounded PC ∈ [0..512), steps ≤ 2000 |
-| **Type Safety** | ✅ Proven | Nim range types, compile-time bounds checking |
-| **Turing Completeness** | ✅ Proven | Bijective BF↔SUBLEQ transpilers |
-| **Reproducibility** | ✅ Proven | Deterministic φ-weights (irrational basis) |
+| **Termination** | ✅ Enforced | Interpreter stops at a step limit or when pc leaves memory |
+| **Memory Safety** | ✅ Checked | Interpreter faults on any out-of-range operand or pc |
+| **BF semantics preserved** | ✅ Tested | ~2000 differential cases incl. Hello World, nested loops, I/O; not a formal proof |
+| **Reproducibility** | ✅ | Deterministic φ-weights; identical input compiles to identical memory |
 
 ## Design Rationale
 
@@ -83,26 +84,27 @@ Output / State Update
 
 - **TC witness**: Establishes SUBLEQ Turing completeness via bijection
 - **Esoteric discipline**: Tests system limits; forces correctness
-- **Bidirectional**: BF↔SUBLEQ transpilers prove equivalence both directions
+- **Compilation target**: BF→SUBLEQ shows SUBLEQ can run a Turing-complete language (the reverse direction was removed; the old version was incorrect)
 - **Pedagogical**: Minimal language exposes core computational primitives
 
 ## Latest Improvements
 
-### J-Array Dynamic Indexing (FIXED)
-**Problem**: Previous BF→SUBLEQ transpiler hardcoded cell 0, ignoring Brainfuck pointer movements
-**Solution**: Proper J-array semantics with dynamic indirect addressing via `tapePtr` register (256)
+### BF → SUBLEQ transpiler (rewritten)
+SUBLEQ has no indirect addressing, so `tape[ptr]` is reached by **self-modifying code**:
+the operand field of the instruction that touches the tape is patched with the pointer,
+executed, then restored.
 
-```nim
-# Before: hardcoded cell 0
-of '+': code.add [257, 0, code.len + codeStart + 3]  # WRONG
-
-# After: dynamic indexing via tapePtr
-of '+':
-  code.add [256, 259, code.len + codeStart + 3]  # temp := tapePtr
-  code.add [257, 259, code.len + codeStart + 3]  # tape[temp]++
+```
++   :  subleq NP  I+1      ; operand(b) += ptr        (NP holds -ptr)
+       I: subleq M1 TAPE   ; tape[ptr] -= -1
+       subleq P   I+1      ; operand(b) -= ptr
 ```
 
-**Impact**: BF→SUBLEQ transpiler now correctly implements Turing completeness with full pointer semantics
+- `>` / `<` update both `P` (ptr) and `NP` (-ptr)
+- `[` / `]` do a full `== 0` test (cells may be negative) via scratch cells `T=-x`, `U=x`
+- Halt is a jump to a negative address; I/O is `a<0` (input) / `b<0` (output)
+- Semantics: cells are **unbounded signed integers (no 8-bit wrap)**; a pointer outside
+  `[0, tapeCells)` is undefined in the compiled program (the reference interpreter reports it)
 
 ### AI Training Prohibition
 All code is released under **GPL-3.0 + supplementary clause**:
@@ -152,36 +154,27 @@ type WordAddr = range[0 .. 511]  # Compile-time checked
 **Original**: Called `randomize()` at line 527, breaking determinism claim
 **Consolidated**: Removed all RNG from critical path
 
-### TC Claim (BF→SUBLEQ Transpiler)
+### BF→SUBLEQ Transpiler
 
-**Original (BROKEN)**: Hardcoded cell 0 instead of implementing dynamic indexing
-```nim
-of '+': emit(ctx.negOneCell, 0, ...)  // Ignores BF pointer!
-```
-
-**Consolidated (FIXED)**: Full dynamic indexing support via J-array memory layout
+**Original (BROKEN)**: hardcoded cell 0 and ignored the BF pointer.
+**Now**: pointer-indexed tape access via self-modifying SUBLEQ (see above), covered by differential tests.
 
 ## Testing
 
-Run consolidated agent:
-```bash
-./consolidated_agent "Your goal here"
-```
-
-Run test suite:
 ```bash
 nim c -d:release test_bf_to_subleq_j.nim
 ./test_bf_to_subleq_j
 ```
 
-Expected output: ✓ Determinism verified, all tests pass
+Each program is compiled to SUBLEQ, run, and compared with a reference BF interpreter on
+output, final tape contents and final pointer. Covers hand-written programs (pointer moves,
+negative cells, nested loops, I/O, Hello World), error cases, determinism, and ~2000
+deterministic-fuzz programs. Expected: `failed: 0`.
 
 ## Documentation
 
-- **consolidated_architecture.md** — Type definitions, core functions, code snippets
-- **formal_properties.md** — 5 theorems with proofs (determinism, termination, TC, safety, reproducibility)
-- **CONSOLIDATION_SUMMARY.md** — Architecture overview, design rationale
-- **IMPLEMENTATION_SUMMARY.txt** — Executive report, constraints checklist
+- `DEPRECATED.md` — status of legacy files and migration notes
+- `subleq_bf.nim` — header comment documents the memory layout and I/O semantics
 
 ## Original Project Context
 
@@ -206,9 +199,7 @@ See LICENSE file.
 
 ## Status
 
-**Production Ready** ✅
-
-All formal properties verified. Safe for:
+**Research prototype** — transpiler is differentially tested, not formally verified. Suitable for:
 - Educational use (understanding minimal computation)
 - Formal verification research
 - Deterministic system development
