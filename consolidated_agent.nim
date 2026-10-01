@@ -99,37 +99,48 @@ proc multiheadAttention(heads: seq[seq[float]]): seq[int] =
 proc brainfuckToSUBLEQ(bf: string): Tape =
   ## Compile Brainfuck → SUBLEQ using J array semantics
   ## Memory layout: [array 0..255][ptr=256][−1=257][+1=258][code]
+  ## Uses dynamic indexing: J[ptr] for cell access
   result = newSeq[int](512)
 
   # Initialize special cells
-  result[256] = 0    # pointer
+  result[256] = 0    # tapePtr (dynamic index)
   result[257] = -1   # constant -1
   result[258] = 1    # constant +1
+  result[259] = 0    # temp for indirect access
 
   var code: seq[int] = @[]
   var loopStack: seq[int] = @[]
-  let codeStart = 259
+  let codeStart = 260
 
   for ch in bf:
     case ch
     of '>':
-      code.add [257, 256, code.len + codeStart + 3]  # ptr++
+      code.add [257, 256, code.len + codeStart + 3]  # tapePtr -= -1 (ptr++)
     of '<':
-      code.add [258, 256, code.len + codeStart + 3]  # ptr--
+      code.add [258, 256, code.len + codeStart + 3]  # tapePtr -= 1 (ptr--)
     of '+':
-      code.add [257, 0, code.len + codeStart + 3]    # tape[0]++
+      # Dynamic: tape[tapePtr]++ via indirect indexing
+      # temp := tapePtr; tape[temp]++
+      code.add [256, 259, code.len + codeStart + 3]  # temp := tapePtr
+      code.add [257, 259, code.len + codeStart + 3]  # tape[temp] -= -1
     of '-':
-      code.add [258, 0, code.len + codeStart + 3]    # tape[0]--
+      # Dynamic: tape[tapePtr]-- via indirect indexing
+      # temp := tapePtr; tape[temp]--
+      code.add [256, 259, code.len + codeStart + 3]  # temp := tapePtr
+      code.add [258, 259, code.len + codeStart + 3]  # tape[temp] -= 1
     of '.':
-      code.add [-1, 0, code.len + codeStart + 3]     # output
+      # Output tape[tapePtr]
+      code.add [256, 259, code.len + codeStart + 3]  # temp := tapePtr
+      code.add [-1, 259, code.len + codeStart + 3]   # output tape[temp]
     of '[':
       loopStack.add code.len
-      code.add [0, 0, 0]  # placeholder
+      code.add [0, 0, 0]  # placeholder (loop condition)
     of ']':
       if loopStack.len > 0:
         let start = loopStack.pop()
-        code[start + 2] = code.len + codeStart  # forward jump
-        code.add [0, 0, start + codeStart]      # back jump
+        code[start] = 256    # loop condition: check tapePtr
+        code[start + 2] = code.len + codeStart  # forward jump target
+        code.add [0, 0, start + codeStart]      # back jump to loop start
     else: discard
 
   code.add [-1, -1, -1]  # halt

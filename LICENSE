@@ -570,6 +570,43 @@ a prominent item in the list meets this criterion.
 
 ---
 
+SUPPLEMENTARY ADDITIONAL TERMS (Under GPL-3.0 Section 7):
+
+1. AI Training Prohibition
+
+   No portion of this software, in source or object code form, may be used as
+   training data for any artificial intelligence, machine learning model, neural
+   network, or large language model (LLM), whether proprietary, open-source, or
+   academic, without explicit written permission from the copyright holder.
+
+   This restriction applies to:
+   - Direct use of code for model training
+   - Incorporation into training datasets or corpora
+   - Fine-tuning or adaptation of existing models
+   - Extraction of code patterns, semantics, or algorithms for model development
+   - Embedding in vector databases or knowledge bases for ML systems
+
+   Exception: Educational use for teaching formal verification, deterministic
+   computation, and SUBLEQ architecture is permitted within classroom settings
+   with proper attribution.
+
+2. Formal Correctness Preservation
+
+   Any derivative work must preserve all formal correctness proofs, type safety
+   guarantees, and determinism properties documented in consolidated_architecture.md
+   and formal_properties.md.
+
+   Modifications that weaken provable invariants must be clearly documented as
+   breaking changes.
+
+3. Attribution Integrity
+
+   All copies and derivative works must retain the original copyright notice,
+   this license, and explicit attribution to Ahmad Ali Parr as the author of
+   the SUBLEQ + φ-Born attention layer.
+
+---
+
 ORIGINAL PROJECT ATTRIBUTION:
 
 Original FlashAttention RTL implementation and design:
