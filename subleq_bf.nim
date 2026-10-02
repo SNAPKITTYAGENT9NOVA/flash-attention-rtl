@@ -6,12 +6,19 @@
 #   operand += ptr   ->   execute   ->   operand -= ptr
 #
 # Semantics (cells are unbounded signed ints, no 8-bit wrap):
-#   a < 0          : read next input value (0 on EOF) into mem[b]; pc += 3
+#   a == -1        : read next input value (0 on EOF) into mem[b]; pc += 3
+#   a == -2        : FlashAttention trap. b = address of the 6-word descriptor
+#                    [Q_ptr, K_ptr, V_ptr, O_ptr, N, d]; O (N*d words) is written, pc = c
+#   a < -2         : fault
 #   b < 0          : append mem[a] to output; pc += 3
 #   otherwise      : mem[b] -= mem[a]; pc = (mem[b] <= 0) ? c : pc + 3
 #   pc < 0         : halt
 # BF pointer outside [0, tapeCells) is undefined in the compiled program
 # (the reference interpreter reports it as an error).
+
+import fa_model
+
+const FaTrap* = -2
 
 type
   RunResult* = object
@@ -37,7 +44,32 @@ proc runSubleq*(mem: var seq[int]; input: seq[int] = @[]; maxSteps = 1_000_000):
     let a = mem[pc]
     let b = mem[pc + 1]
     let c = mem[pc + 2]
-    if a < 0:
+    if a == FaTrap:
+      if b < 0 or b + 5 >= mem.len:
+        result.fault = "bad FA descriptor address " & $b & " at pc " & $pc
+        return
+      let qp = mem[b]
+      let kp = mem[b + 1]
+      let vp = mem[b + 2]
+      let op = mem[b + 3]
+      let n = mem[b + 4]
+      let d = mem[b + 5]
+      if n < 1 or n > FaMaxN or d < 1 or d > FaDMax:
+        result.fault = "invalid FA descriptor (N=" & $n & ", d=" & $d & ")"
+        return
+      let words = n * d
+      for region in [qp, kp, vp, op]:
+        if region < 0 or region + words > mem.len:
+          result.fault = "FA pointer " & $region & " out of range"
+          return
+      let o = faAttention(mem[qp ..< qp + words], mem[kp ..< kp + words],
+                          mem[vp ..< vp + words], n, d)
+      for i in 0 ..< words: mem[op + i] = o[i]
+      pc = c
+    elif a < -1:
+      result.fault = "illegal opcode " & $a & " at pc " & $pc
+      return
+    elif a < 0:
       if b < 0 or b >= mem.len:
         result.fault = "bad input target " & $b & " at pc " & $pc
         return
