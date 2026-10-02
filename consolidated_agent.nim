@@ -4,7 +4,7 @@
 # Compile: nim c -d:release consolidated_agent.nim
 
 import std/[math, os]
-import subleq_bf
+import src/subleq_bf
 
 const
   MEM_SIZE = 512
