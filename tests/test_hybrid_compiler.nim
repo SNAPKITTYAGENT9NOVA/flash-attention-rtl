@@ -3,7 +3,7 @@
 # Tests: Parse -> IR -> Codegen -> SUBLEQ VM -> Verify Output
 
 import std/[strutils, sequtils, tables]
-import subleq_bf
+import ../src/subleq_bf
 
 # ─────────────────────────────────────────────────────────────────────────
 # TEST SUITE CATEGORIES

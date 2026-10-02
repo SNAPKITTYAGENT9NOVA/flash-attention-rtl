@@ -1,9 +1,9 @@
 # Test suite for hybrid frontend: lexer, parser, AST
 # Verifies correctness and determinism of tokenization and parsing.
 
-import hybrid_ast
-import hybrid_lexer
-import hybrid_parser
+import ../src/hybrid_ast
+import ../src/hybrid_lexer
+import ../src/hybrid_parser
 import strutils
 import sequtils
 
