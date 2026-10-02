@@ -16,7 +16,7 @@ type
   CFG* = object
     # Control Flow Graph
     blocks*: seq[seq[IRStmt]]
-    jumps*: seq[tuple[from, to: int]]
+    jumps*: seq[tuple[fromBlock, toBlock: int]]
 
 proc normalizeAST*(ast: AST): IRProgram =
   ## Convert unstructured AST to normalized IR
@@ -24,8 +24,8 @@ proc normalizeAST*(ast: AST): IRProgram =
   var prog: IRProgram
 
   # Normalize: sort all sequences for determinism
-  prog.globals.sort()
-  prog.functions.sort(proc(a, b: IRFunction): int = cmp(a.name, b.name))
+  algorithm.sort(prog.globals)
+  algorithm.sort(prog.functions, proc(a, b: IRFunction): int = cmp(a.name, b.name))
 
   prog
 
@@ -36,7 +36,7 @@ proc buildCFG*(stmts: seq[IRStmt]): CFG =
 
   for stmt in stmts:
     case stmt.kind
-    of "if", "while", "for":
+    of irIf, irWhile, irFor:
       if currentBlock.len > 0:
         cfg.blocks.add currentBlock
         currentBlock = @[]

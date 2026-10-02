@@ -4,6 +4,7 @@
 
 import hybrid_ast
 import subleq_bf
+import befunge_codegen
 
 const
   # Memory layout: fixed zones (matches subleq_bf.nim)
@@ -115,8 +116,6 @@ proc codegen*(prog: Program; tapeCells = 256): Transpiled =
   of modeBrainfuck:
     codegenBrainfuck(prog, tapeCells)
   of modeBefunge:
-    var err: Transpiled
-    err.error = "Befunge code generation not yet implemented"
-    return err
+    codegenBefunge(prog, tapeCells)
   of modeHybrid:
     codegenBrainfuck(prog, tapeCells)

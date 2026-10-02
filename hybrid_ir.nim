@@ -2,7 +2,7 @@
 # Contract between Agent 1 (Parser) and Agent 2 (Codegen)
 # Stable, deterministic, supports hybrid BCPL/Befunge semantics
 
-import std/[tables, sets, hashes]
+import std/[tables, sets, hashes, algorithm]
 
 type
   # ─────────────────────────────────────────────────────────────
@@ -35,61 +35,61 @@ type
     opNot = "!"
     opNeg = "-"
 
+  IRExprKind* = enum
+    irLit, irVar, irBinOp, irUnOp, irCall, irIndex
+
   IRExpr* = ref object
-    case kind*: string
-    of "lit":
+    case kind*: IRExprKind
+    of irLit:
       litValue*: int
-    of "var":
+    of irVar:
       varName*: string
       varId*: int
-    of "binop":
+    of irBinOp:
       binOp*: BinaryOp
       left*: IRExpr
       right*: IRExpr
-    of "unop":
+    of irUnOp:
       unOp*: UnaryOp
       operand*: IRExpr
-    of "call":
+    of irCall:
       funcName*: string
       args*: seq[IRExpr]
-    of "index":
+    of irIndex:
       arrayExpr*: IRExpr
       indexExpr*: IRExpr
-    else:
-      discard
+
+  IRStmtKind* = enum
+    irAssign, irOutput, irInput, irIf, irWhile, irFor, irMemSet, irPtrMove, irBreak, irContinue
 
   IRStmt* = ref object
-    case kind*: string
-    of "assign":
+    case kind*: IRStmtKind
+    of irAssign:
       assignTarget*: string
       assignValue*: IRExpr
-    of "output":
+    of irOutput:
       outputExpr*: IRExpr
-    of "input":
+    of irInput:
       inputTarget*: string
-    of "if":
+    of irIf:
       condition*: IRExpr
       thenBranch*: seq[IRStmt]
       elseBranch*: seq[IRStmt]
-    of "while":
+    of irWhile:
       whileCondition*: IRExpr
       whileBody*: seq[IRStmt]
-    of "for":
+    of irFor:
       forVar*: string
       forStart*: IRExpr
       forEnd*: IRExpr
       forBody*: seq[IRStmt]
-    of "memset":
+    of irMemSet:
       memAddr*: IRExpr
       memValue*: IRExpr
       memSize*: IRExpr
-    of "pointerMove":
+    of irPtrMove:
       pointerDelta*: int
-    of "break":
-      discard
-    of "continue":
-      discard
-    else:
+    of irBreak, irContinue:
       discard
 
   IRFunction* = object
@@ -131,14 +131,14 @@ type
 proc intLit*(v: int): IRExpr =
   var e: IRExpr
   new e
-  e.kind = "lit"
+  e.kind = irLit
   e.litValue = v
   e
 
 proc varRef*(name: string; id: int = 0): IRExpr =
   var e: IRExpr
   new e
-  e.kind = "var"
+  e.kind = irVar
   e.varName = name
   e.varId = id
   e
@@ -146,7 +146,7 @@ proc varRef*(name: string; id: int = 0): IRExpr =
 proc binOp*(op: BinaryOp; l: IRExpr; r: IRExpr): IRExpr =
   var e: IRExpr
   new e
-  e.kind = "binop"
+  e.kind = irBinOp
   e.binOp = op
   e.left = l
   e.right = r
@@ -155,7 +155,7 @@ proc binOp*(op: BinaryOp; l: IRExpr; r: IRExpr): IRExpr =
 proc unOp*(op: UnaryOp; operand: IRExpr): IRExpr =
   var e: IRExpr
   new e
-  e.kind = "unop"
+  e.kind = irUnOp
   e.unOp = op
   e.operand = operand
   e
@@ -163,7 +163,7 @@ proc unOp*(op: UnaryOp; operand: IRExpr): IRExpr =
 proc assign*(target: string; value: IRExpr): IRStmt =
   var s: IRStmt
   new s
-  s.kind = "assign"
+  s.kind = irAssign
   s.assignTarget = target
   s.assignValue = value
   s
@@ -171,21 +171,21 @@ proc assign*(target: string; value: IRExpr): IRStmt =
 proc outputStmt*(expr: IRExpr): IRStmt =
   var s: IRStmt
   new s
-  s.kind = "output"
+  s.kind = irOutput
   s.outputExpr = expr
   s
 
 proc inputStmt*(target: string): IRStmt =
   var s: IRStmt
   new s
-  s.kind = "input"
+  s.kind = irInput
   s.inputTarget = target
   s
 
 proc ifStmt*(cond: IRExpr; thenBr: seq[IRStmt]; elseBr: seq[IRStmt] = @[]): IRStmt =
   var s: IRStmt
   new s
-  s.kind = "if"
+  s.kind = irIf
   s.condition = cond
   s.thenBranch = thenBr
   s.elseBranch = elseBr
@@ -194,7 +194,7 @@ proc ifStmt*(cond: IRExpr; thenBr: seq[IRStmt]; elseBr: seq[IRStmt] = @[]): IRSt
 proc whileStmt*(cond: IRExpr; body: seq[IRStmt]): IRStmt =
   var s: IRStmt
   new s
-  s.kind = "while"
+  s.kind = irWhile
   s.whileCondition = cond
   s.whileBody = body
   s
