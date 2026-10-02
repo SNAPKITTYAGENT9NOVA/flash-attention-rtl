@@ -202,7 +202,7 @@ proc initE2ETests* =
     description: "Full Brainfuck program (++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.)",
     sourceCode: "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.",
     input: @[],
-    expectedOutput: @[72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33],  # "Hello World!"
+    expectedOutput: @[72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33, 10],  # "Hello World!\n"
     category: "Befunge"
   ))
 
@@ -312,12 +312,35 @@ proc initE2ETests* =
 # ─────────────────────────────────────────────────────────────────────────
 
 proc actualCompile*(source: string): seq[int] =
-  # Use the real hybrid compiler pipeline
+  # Detect language by analyzing characters
+  let validBF = {'>', '<', '+', '-', '.', ',', '[', ']', '\n', ' ', '\t', '\r'}
+  var isRawBF = true
+  for ch in source:
+    if ch notin validBF:
+      isRawBF = false
+      break
+  
+  if not isRawBF:
+    # Check what kind of unsupported syntax it is
+    var hasBefungeOps = false
+    for ch in source:
+      if ch in {'v', '^'}:
+        hasBefungeOps = true
+        break
+    
+    if hasBefungeOps or (source.len > 0 and source[0] in {'>', '<', 'v', '^'}):
+      echo "  [Befunge - Agent 2 codegen not yet implemented]"
+    else:
+      echo "  [High-level syntax - Agent 1 parser not yet integrated]"
+    return @[]
+  
+  # Compile as Brainfuck
   let (tr, err) = compileToSubleq(source, 256)
   if err.len > 0:
     echo "  Compiler error: " & err
     return @[]
   tr.mem
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # MAIN TEST RUNNER
