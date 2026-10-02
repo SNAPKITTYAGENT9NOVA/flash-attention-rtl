@@ -21,3 +21,8 @@ nimcache/
 
 # OS
 .DS_Store
+
+# FA verification artifacts
+test_fa_opcode
+sim/fa/work_*/
+__pycache__/
