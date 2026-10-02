@@ -32,3 +32,5 @@ __pycache__/
 
 # C stack build output
 cstack/build/
+befunge_codegen
+parser_pipeline
