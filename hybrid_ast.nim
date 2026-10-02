@@ -3,6 +3,23 @@
 # Compile: nim c -d:release hybrid_ast.nim
 
 type
+  # Token for lexer output
+  Token* = object
+    kind*: string
+    text*: string
+    lexeme*: string
+    line*: int
+    col*: int
+
+  # Lexer state
+  Lexer* = object
+    input*: string
+    pos*: int
+    line*: int
+    col*: int
+    tokens*: seq[Token]
+    error*: string
+
   # Instruction type covering both Befunge and Brainfuck ops
   InstrKind* = enum
     # Befunge stack operations
@@ -99,3 +116,29 @@ proc `$`*(i: Instr): string =
   of ikJump: "jump(" & i.label & ")"
   of ikCondBranch: "condBranch(" & i.label & ")"
   else: $i.kind
+
+# Token type constants
+const
+  tokEOF* = "EOF"
+  tokError* = "ERROR"
+  tokNumber* = "NUMBER"
+  tokIdent* = "IDENT"
+  tokBefungeOp* = "BEFUNGE_OP"
+  tokVarDecl* = "VAR_DECL"
+  tokFn* = "FN"
+  tokIf* = "IF"
+  tokElse* = "ELSE"
+  tokWhile* = "WHILE"
+  tokReturn* = "RETURN"
+  tokSemicolon* = "SEMICOLON"
+  tokLParen* = "LPAREN"
+  tokRParen* = "RPAREN"
+  tokLBrace* = "LBRACE"
+  tokRBrace* = "RBRACE"
+  tokLBracket* = "LBRACKET"
+  tokRBracket* = "RBRACKET"
+  tokAssign* = "ASSIGN"
+  tokStar* = "STAR"
+  tokAmpersand* = "AMPERSAND"
+  tokComma* = "COMMA"
+  tokFATrap* = "FA_TRAP"
