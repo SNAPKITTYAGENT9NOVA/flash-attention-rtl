@@ -185,6 +185,7 @@ sim/fa/run_all.sh
 | `consolidated_agent.nim` | φ-Born attention and the agent loop |
 | `test_bf_to_subleq_j.nim` | transpiler differential tests |
 | `test_fa_opcode.nim` | FA opcode tests; writes memory images for the RTL SoC test |
+| `cstack/` | layered C core (boot, Goldilocks field, ALP boundary, resource limits, triple-lock gateway, witness, WORM ledger); see `cstack/README.md` |
 | `rtl/src/fa_*.sv`, `subleq_cpu.sv`, `subleq_fa_soc.sv`, `subleq_ram.sv` | FA_ENGINE blocks, SUBLEQ CPU, SoC and RAM |
 | `sim/fa/` | Verilator testbenches, test vectors and `run_all.sh` |
 | `software/fa_int_model.py`, `gen_fa_vectors.py` | bit-exact integer model and test-vector generator |

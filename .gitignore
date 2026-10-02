@@ -26,3 +26,6 @@ nimcache/
 test_fa_opcode
 sim/fa/work_*/
 __pycache__/
+
+# C stack build output
+cstack/build/
