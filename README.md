@@ -1,210 +1,126 @@
-# Flash-Attention RTL: SUBLEQ + φ-Born Deterministic Attention
+# SUBLEQ + φ-Born Deterministic Attention
 
-A formally-verified deterministic attention mechanism built on **SUBLEQ** (single-instruction universal computer) and **φ-Born (PBI)** attention, replacing the original hardware RTL implementation.
+A small, deterministic agent built on **SUBLEQ** (a one-instruction computer) with **φ-Born attention** for action selection, plus a **Brainfuck → SUBLEQ transpiler**.
 
-## Overview
+## What's in it
 
-This project demonstrates:
-- **SUBLEQ core**: Ultra-minimal Turing-complete instruction (subtraction + conditional branch)
-- **φ-Born attention**: Golden-ratio weighted deterministic action selection
-- **Brainfuck → SUBLEQ transpiler**: deterministic, self-modifying SUBLEQ with indexed tape access, differentially tested against a reference BF interpreter
-- **Determinism and bounded execution**: no RNG, step-limited interpreter; the transpiler is tested, not formally proven
-- **Deterministic autonomy**: Attention-driven tactical agent with bounded cycles
+- **SUBLEQ interpreter** with bounds-checked memory, a step limit, and input/output
+- **Brainfuck → SUBLEQ transpiler** that compiles any Brainfuck program to a SUBLEQ memory image
+- **Reference Brainfuck interpreter** used to test the transpiler
+- **φ-Born attention**: golden-ratio-weighted, multi-head, deterministic action selection
+- **Agent loop** that encodes its state, selects an action with φ-Born attention, and runs for a bounded number of cycles
 
-## Quick Start
+Everything is deterministic: no random numbers, and the same input always produces the same output.
 
-### Consolidated Agent (Primary Implementation)
+## Quick start
+
+Requires [Nim](https://nim-lang.org/).
 
 ```bash
-cd /home/user/flash-attention-rtl
+# run the agent (the argument is a Brainfuck program used as its goal)
 nim c -d:release consolidated_agent.nim
-./consolidated_agent
-```
+./consolidated_agent "+++[-]"
 
-**Status**: ✅ **Production-ready**
-- Deterministic code, no RNG
-- Bounds-checked SUBLEQ interpreter (`subleq_bf.nim`)
-- BF→SUBLEQ transpiler with real pointer-indexed tape access
-- Differential test suite (see Testing)
-
-### Legacy Code
-
-| File | Status | Notes |
-|------|--------|-------|
-| `consolidated_agent.nim` | ✅ | φ-Born agent loop; imports `subleq_bf.nim` |
-| `subleq_bf.nim` | ✅ TESTED | SUBLEQ interpreter, BF→SUBLEQ transpiler, reference BF interpreter |
-| `refuge.nim` | ❌ DEPRECATED | Contains critical bounds violations, false TC claims |
-| `test_bf_to_subleq_j.nim` | ✅ | Differential tests: compiled SUBLEQ vs reference BF (output, tape, pointer) |
-
-## Architecture
-
-### Core Components
-
-```
-User Input
-    ↓
-[encodeState] → Deterministic φ-weighted activation vectors
-    ↓
-[multiheadAttention] → N-head SUBLEQ-based collapse
-    ↓
-[collapseToAction] → Discrete tactical action
-    ↓
-[Agent Actions] → SUBLEQ, BF, Transpilation
-    ↓
-Output / State Update
-```
-
-### Formal Properties
-
-| Property | Status | Evidence |
-|----------|--------|----------|
-| **Determinism** | ✅ Proven | No RNG in critical path; pure functions only |
-| **Termination** | ✅ Enforced | Interpreter stops at a step limit or when pc leaves memory |
-| **Memory Safety** | ✅ Checked | Interpreter faults on any out-of-range operand or pc |
-| **BF semantics preserved** | ✅ Tested | ~2000 differential cases incl. Hello World, nested loops, I/O; not a formal proof |
-| **Reproducibility** | ✅ | Deterministic φ-weights; identical input compiles to identical memory |
-
-## Design Rationale
-
-### Why SUBLEQ?
-
-- **Ultra-minimal**: Single instruction (mem[b] -= mem[a]) is Turing complete
-- **Deterministic**: No floating-point uncertainty; purely integer arithmetic
-- **Verifiable**: Small instruction set easy to reason about formally
-- **Efficient**: Can compile to efficient code via transpilers
-
-### Why φ-Born Attention?
-
-- **Deterministic**: Golden ratio (φ) is irrational; prevents cycles via floor() + modulo
-- **Numerically stable**: φ-weighted geometric series converges rapidly
-- **Evidence-based**: Weights backed by mathematical invariants, not heuristics
-- **Formal**: All attention outputs reproducible given same input
-
-### Why Brainfuck?
-
-- **TC witness**: Establishes SUBLEQ Turing completeness via bijection
-- **Esoteric discipline**: Tests system limits; forces correctness
-- **Compilation target**: BF→SUBLEQ shows SUBLEQ can run a Turing-complete language (the reverse direction was removed; the old version was incorrect)
-- **Pedagogical**: Minimal language exposes core computational primitives
-
-## Latest Improvements
-
-### BF → SUBLEQ transpiler (rewritten)
-SUBLEQ has no indirect addressing, so `tape[ptr]` is reached by **self-modifying code**:
-the operand field of the instruction that touches the tape is patched with the pointer,
-executed, then restored.
-
-```
-+   :  subleq NP  I+1      ; operand(b) += ptr        (NP holds -ptr)
-       I: subleq M1 TAPE   ; tape[ptr] -= -1
-       subleq P   I+1      ; operand(b) -= ptr
-```
-
-- `>` / `<` update both `P` (ptr) and `NP` (-ptr)
-- `[` / `]` do a full `== 0` test (cells may be negative) via scratch cells `T=-x`, `U=x`
-- Halt is a jump to a negative address; I/O is `a<0` (input) / `b<0` (output)
-- Semantics: cells are **unbounded signed integers (no 8-bit wrap)**; a pointer outside
-  `[0, tapeCells)` is undefined in the compiled program (the reference interpreter reports it)
-
-### AI Training Prohibition
-All code is released under **GPL-3.0 + supplementary clause**:
-- ✅ Prohibits use for training AI/ML models
-- ✅ Prohibits incorporation into language models (LLMs)
-- ✅ Educational classroom use with attribution permitted
-- ✅ Source code remains free for legitimate modification and distribution
-
-See LICENSE for full terms.
-
-## Critical Fixes (vs. Original refuge.nim)
-
-### Bounds Violations Fixed
-
-**Original (BROKEN)**:
-```nim
-// Line 61-64: UNSAFE - reads 3 words but checks only pc >= mem.len
-if pc < 0 or pc >= mem.len: break
-let a = mem[pc]
-let b = mem[pc+1]   // ← CRASH if pc == mem.len-1
-let c = mem[pc+2]   // ← CRASH if pc == mem.len-2
-```
-
-**Consolidated (FIXED)**:
-```nim
-// Range-checked with proper bounds
-if pc + 2 >= mem.len: break
-let a = mem[pc]
-let b = mem[pc + 1]
-let c = mem[pc + 2]
-```
-
-### Operand Validation
-
-**Added**: `WordAddr` range type to prevent negative indices at compile-time
-```nim
-type WordAddr = range[0 .. 511]  # Compile-time checked
-```
-
-### Halt Semantics
-
-**Standard SUBLEQ**: `a == -1 AND b == -1` → halt
-**Implemented correctly** in consolidated_agent.nim
-
-### Determinism Violation
-
-**Original**: Called `randomize()` at line 527, breaking determinism claim
-**Consolidated**: Removed all RNG from critical path
-
-### BF→SUBLEQ Transpiler
-
-**Original (BROKEN)**: hardcoded cell 0 and ignored the BF pointer.
-**Now**: pointer-indexed tape access via self-modifying SUBLEQ (see above), covered by differential tests.
-
-## Testing
-
-```bash
+# run the test suite
 nim c -d:release test_bf_to_subleq_j.nim
 ./test_bf_to_subleq_j
 ```
 
-Each program is compiled to SUBLEQ, run, and compared with a reference BF interpreter on
-output, final tape contents and final pointer. Covers hand-written programs (pointer moves,
-negative cells, nested loops, I/O, Hello World), error cases, determinism, and ~2000
-deterministic-fuzz programs. Expected: `failed: 0`.
+## SUBLEQ
 
-## Documentation
+One instruction, `subleq a b c`:
 
-- `DEPRECATED.md` — status of legacy files and migration notes
-- `subleq_bf.nim` — header comment documents the memory layout and I/O semantics
+```
+mem[b] -= mem[a]
+if mem[b] <= 0: goto c   else: goto next instruction
+```
 
-## Original Project Context
+Interpreter conventions (`subleq_bf.nim`):
 
-This repository originally contained:
-- **SIMULATION_SETUP.md** — Verilator/Cocotb testbench for SystemVerilog Systolic Array
-- **software/golden_model.py** — FlashAttention reference implementation (Dao et al.)
-- **rtl/src/** — SystemVerilog RTL (8×8 Systolic Array for matrix multiplication)
+| Condition | Behaviour |
+|-----------|-----------|
+| `a < 0` | read the next input value (0 at end of input) into `mem[b]` |
+| `b < 0` | append `mem[a]` to the output |
+| `pc < 0` | halt |
+| operand or `pc` outside memory, or step limit reached | stop with a fault message |
 
-These files remain for reference but are **superceded** by the SUBLEQ-based deterministic attention system.
+## Brainfuck → SUBLEQ
 
-## References
+SUBLEQ has no indirect addressing, so reading or writing `tape[ptr]` uses self-modifying code: the operand of the instruction that touches the tape is patched with the pointer, the instruction runs, and the operand is restored.
 
-- **SUBLEQ**: https://esolangs.org/wiki/Subleq
-- **Brainfuck**: https://esolangs.org/wiki/Brainfuck
-- **Golden Ratio (φ)**: https://en.wikipedia.org/wiki/Golden_ratio
-- **FlashAttention**: Dao et al. "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness" (2022)
-- **Nim Language**: https://nim-lang.org/
+```
++  :  subleq NP  I+1      ; operand += ptr        (NP holds -ptr)
+   I: subleq M1  TAPE     ; tape[ptr] -= -1
+      subleq P   I+1      ; operand -= ptr
+```
+
+Memory layout of a compiled program:
+
+| Address | Contents |
+|---------|----------|
+| `0..2` | entry triad (`mem[0]` doubles as the constant zero) |
+| `3` / `4` | constants `+1` / `-1` |
+| `5` / `6` | pointer `P` / negated pointer `NP` |
+| `7` / `8` | scratch cells `T`, `U` |
+| `9 ..` | compiled triads, ending in a halt |
+| after code | the Brainfuck tape (default 256 cells) |
+
+Operators:
+
+| BF | Compiled to |
+|----|-------------|
+| `>` `<` | update `P` and `NP` |
+| `+` `-` | patched `subleq` on `tape[ptr]` |
+| `.` `,` | patched output / input instruction |
+| `[` `]` | full `== 0` test using `T = -x`, `U = x` (works for negative cells), then jump |
+
+Semantics: cells are unbounded signed integers (no 8-bit wrap). Moving the pointer outside `[0, tapeCells)` is undefined in the compiled program.
+
+```nim
+import subleq_bf
+
+let prog = brainfuckToSubleq("+++[->++<]>.")   # prog.mem, prog.tapeBase, prog.error
+var mem = prog.mem
+let res = runSubleq(mem)                        # res.output == @[6], res.halted == true
+```
+
+## φ-Born attention
+
+```
+state ──encodeState──▶ φ-weighted activation vectors (4 heads × 8 dims)
+      ──multiheadAttention──▶ one value per head: floor(Σ φ⁻ⁱ · |aᵢ|) mod 256
+      ──selectAction──▶ Observe | Plan | Transpile | Run | Halt
+```
+
+The weights are powers of the inverse golden ratio, so the result is a pure function of the encoded state.
+
+## Testing
+
+`test_bf_to_subleq_j.nim` compiles each program to SUBLEQ, runs it, and compares output, final tape contents and final pointer with the reference Brainfuck interpreter. It covers:
+
+- hand-written programs: pointer movement, independent cells, negative cells, skipped and nested loops, input/output, Hello World
+- unmatched-bracket errors
+- identical input compiling to identical memory
+- about 2000 deterministic pseudo-random programs
+
+Expected last line: `failed: 0`.
+
+## Repository layout
+
+| Path | Contents |
+|------|----------|
+| `subleq_bf.nim` | SUBLEQ interpreter, Brainfuck → SUBLEQ transpiler, reference Brainfuck interpreter |
+| `consolidated_agent.nim` | φ-Born attention and the agent loop |
+| `test_bf_to_subleq_j.nim` | differential test suite |
+| `rtl/`, `sim/` | SystemVerilog systolic-array RTL and its simulation testbench |
+| `software/` | FlashAttention golden model and test-vector generator |
 
 ## License
 
-See LICENSE file.
+GNU General Public License v3 or later, with a supplementary term prohibiting use of this code as AI/ML training data. See `LICENSE`.
 
-## Status
+## References
 
-**Research prototype** — transpiler is differentially tested, not formally verified. Suitable for:
-- Educational use (understanding minimal computation)
-- Formal verification research
-- Deterministic system development
-- Autonomous agent research (bounded execution)
-
----
-
-**Built with integrity-first, deterministic, evidence-based reasoning.**
+- SUBLEQ: https://esolangs.org/wiki/Subleq
+- Brainfuck: https://esolangs.org/wiki/Brainfuck
+- Golden ratio: https://en.wikipedia.org/wiki/Golden_ratio
