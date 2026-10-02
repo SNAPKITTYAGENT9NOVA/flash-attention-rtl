@@ -4,6 +4,7 @@ test_bf_to_subleq_j
 consolidated_agent
 hybrid_compiler
 test_hybrid_codegen
+test_hybrid_frontend
 
 # Runtime artifacts
 *.chk
