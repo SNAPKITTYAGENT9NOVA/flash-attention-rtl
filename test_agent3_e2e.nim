@@ -4,6 +4,7 @@
 
 import std/[strutils, tables, algorithm, sequtils]
 import subleq_bf
+import hybrid_compiler
 
 type
   E2ETest* = object
@@ -310,9 +311,13 @@ proc initE2ETests* =
 # PLACEHOLDER COMPILER (to be replaced by Agent 1 + Agent 2)
 # ─────────────────────────────────────────────────────────────────────────
 
-proc placeholderCompile*(source: string): seq[int] =
-  # This will be replaced by actual hybrid compiler pipeline
-  @[]
+proc actualCompile*(source: string): seq[int] =
+  # Use the real hybrid compiler pipeline
+  let (tr, err) = compileToSubleq(source, 256)
+  if err.len > 0:
+    echo "  Compiler error: " & err
+    return @[]
+  tr.mem
 
 # ─────────────────────────────────────────────────────────────────────────
 # MAIN TEST RUNNER
@@ -331,7 +336,7 @@ proc runAllE2ETests* =
   var categoryStats: Table[string, (int, int)]
 
   for test in testSuite:
-    let passed = runE2ETest(test, placeholderCompile)
+    let passed = runE2ETest(test, actualCompile)
     if test.category notin categoryStats:
       categoryStats[test.category] = (0, 0)
     let (p, f) = categoryStats[test.category]
