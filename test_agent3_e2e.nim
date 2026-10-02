@@ -2,7 +2,7 @@
 # Tests for hybrid language combining Befunge, Brainfuck, and BCPL
 # Critical: all tests flow through: SOURCE → AGENT1 → AGENT3 → AGENT2 → VM
 
-import std/[strutils, tables]
+import std/[strutils, tables, algorithm, sequtils]
 import subleq_bf
 
 type
@@ -55,7 +55,7 @@ proc runE2ETest*(test: E2ETest; compileFn: proc(source: string): seq[int]): bool
     if result.output != test.expectedOutput:
       echo "  ✗ FAIL: Output mismatch"
       echo "    Expected: ", test.expectedOutput
-      echo "    Got:      ", test.output
+      echo "    Got:      ", result.output
       inc failCount
       return false
 

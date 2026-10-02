@@ -3,13 +3,78 @@
 # Compile: nim c -d:release hybrid_ast.nim
 
 type
+  # Token type kind (string constant)
+  TokenKind* = string
+
   # Token for lexer output
   Token* = object
-    kind*: string
+    kind*: TokenKind
     text*: string
     lexeme*: string
+    value*: int
     line*: int
     col*: int
+
+  # Variable declaration for BCPL-style vars
+  VarDecl* = object
+    name*: string
+    cellAddr*: int
+    initialValue*: int
+    isArray*: bool
+    arraySize*: int
+
+  # Parser state
+  Parser* = object
+    tokens*: seq[Token]
+    pos*: int
+    symbols*: seq[tuple[name: string, decl: VarDecl]]
+    memCounter*: int
+    error*: string
+    errors*: seq[string]
+
+  # Memory layout descriptor
+  MemoryLayout* = object
+    subleqOverhead*: int
+    variables*: seq[VarDecl]
+    varMap*: seq[tuple[name: string, address: int]]
+    befungeCodeBase*: int
+    befungeCodeSize*: int
+    brainfuckTapeBase*: int
+    brainfuckTapeCells*: int
+    totalCells*: int
+
+  # Brainfuck program descriptor
+  BrainfuckProg* = object
+    tapeCells*: int
+
+  # Hybrid program combining all components
+  HybridProgram* = object
+    ast*: ASTNode
+    befungeGrid*: BefungeGrid
+    brainfuckProg*: BrainfuckProg
+    variables*: seq[VarDecl]
+    memoryLayout*: MemoryLayout
+    entryPoint*: int
+    error*: string
+
+  # Brainfuck AST operations
+  BrainfuckOp* = enum
+    BfcPtrInc, BfcPtrDec, BfcCellInc, BfcCellDec, BfcOutput, BfcInput, BfcLoopStart, BfcLoopEnd
+
+  # AST node kind discriminator
+  ASTNodeKind* = enum
+    ankSeq, ankBrainfuck, ankBefunge
+
+  # AST node type (variant)
+  ASTNode* = object
+    case kind*: ASTNodeKind
+    of ankSeq:
+      children*: seq[ASTNode]
+    of ankBrainfuck:
+      bfOp*: BrainfuckOp
+    of ankBefunge:
+      bfOpEnum*: BefungeOp
+      bfValue*: int
 
   # Lexer state
   Lexer* = object
@@ -73,6 +138,21 @@ type
 
   ExecutionMode* = enum modeHybrid, modeBefunge, modeBrainfuck
 
+  # Befunge 2D grid operations
+  BefungeOp* = enum
+    BfNop, BfRight, BfLeft, BfDown, BfUp,
+    BfPush, BfAdd, BfSub, BfMul, BfDiv, BfMod, BfNot, BfCmpGt,
+    BfDup, BfPop, BfSwap, BfHRotate, BfHRotateL,
+    BfMGet, BfMPut, BfOutput, BfOutputAscii,
+    BfInput, BfExit
+
+  BefungeGrid* = object
+    ops*: seq[seq[BefungeOp]]
+    width*: int
+    height*: int
+    startRow*: int
+    startCol*: int
+
   # High-level program representation
   Program* = object
     instrs*: seq[Instr]
@@ -116,6 +196,34 @@ proc `$`*(i: Instr): string =
   of ikJump: "jump(" & i.label & ")"
   of ikCondBranch: "condBranch(" & i.label & ")"
   else: $i.kind
+
+# AST node constructors
+proc newSeqNode*(children: seq[ASTNode]): ASTNode =
+  ASTNode(kind: ankSeq, children: children)
+
+proc newBrainfuckNode*(op: BrainfuckOp): ASTNode =
+  ASTNode(kind: ankBrainfuck, bfOp: op)
+
+proc newBefungeNode*(op: BefungeOp; value: int = 0): ASTNode =
+  ASTNode(kind: ankBefunge, bfOpEnum: op, bfValue: value)
+
+proc newLoopNode*(cond: ASTNode; body: ASTNode): ASTNode =
+  ASTNode(kind: ankSeq, children: @[cond, body])
+
+proc newLitNode*(val: int): ASTNode =
+  newBefungeNode(BfPush, val)
+
+proc newVarRefNode*(name: string; isRef: bool = true): ASTNode =
+  newSeqNode(@[])
+
+proc newCommentNode*(text: string): ASTNode =
+  newSeqNode(@[])
+
+proc newIfNode*(cond: ASTNode; thenBranch: ASTNode; elseBranch: ASTNode): ASTNode =
+  ASTNode(kind: ankSeq, children: @[cond, thenBranch, elseBranch])
+
+proc newFATrapNode*(desc: int; nextPc: int): ASTNode =
+  newSeqNode(@[])
 
 # Token type constants
 const
