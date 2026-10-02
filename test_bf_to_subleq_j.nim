@@ -1,74 +1,111 @@
-# Test program: Brainfuck → SUBLEQ-J compiler
-# Demonstrates J-array semantics for BF compilation
+# Differential tests: compiled SUBLEQ must match the reference BF interpreter
+# on output, final tape contents and final pointer.
 
-import std/[sequtils, strutils]
+import std/strutils
+import subleq_bf
 
-# Include the BF→SUBLEQ-J compiler from refuge.nim
-include "refuge.nim"
+const TapeCells = 64
+const HelloBF = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
 
-proc main() =
-  echo "╔════════════════════════════════════════════════════════════╗"
-  echo "║  BF → SUBLEQ-J Compiler Test (J Array Semantics)           ║"
-  echo "╚════════════════════════════════════════════════════════════╝"
+var failures = 0
+var passes = 0
 
-  # Test 1: Simple increment
-  echo "\n[Test 1] Simple Brainfuck: '+' (increment tape[0])"
-  let bfTest1 = "+"
-  let (mem1, labels1, err1) = bfToSubleqJ(bfTest1)
-  if err1.len > 0:
-    echo "ERROR: ", err1
+proc fail(name, msg: string) =
+  inc failures
+  echo "FAIL ", name, ": ", msg
+
+proc compare(name, bf: string; input: seq[int] = @[]): bool =
+  ## returns true if the program was comparable (reference finished cleanly)
+  let ref0 = runBF(bf, input, TapeCells, 3000)
+  if ref0.error.len > 0: return false
+  let tr = brainfuckToSubleq(bf, TapeCells)
+  if tr.error.len > 0:
+    fail name, "transpile error: " & tr.error
+    return true
+  var mem = tr.mem
+  let res = runSubleq(mem, input, 16 * ref0.steps + 100)
+  if res.fault.len > 0:
+    fail name, "subleq fault: " & res.fault
+  elif not res.halted:
+    fail name, "did not halt"
+  elif res.output != ref0.output:
+    fail name, "output " & $res.output & " != reference " & $ref0.output
+  elif mem[tr.tapeBase ..< tr.tapeBase + TapeCells] != ref0.tape:
+    fail name, "final tape differs"
+  elif mem[PtrCell] != ref0.ptrPos or mem[NegPtrCell] != -ref0.ptrPos:
+    fail name, "final pointer differs"
   else:
-    echo "  Compiled to ", mem1.len, " words"
-    echo "  Labels: ", labels1.len
-    echo "  Memory (first 20 words): ", mem1[0..min(19, mem1.len-1)]
+    inc passes
+  true
 
-  # Test 2: Loop structure
-  echo "\n[Test 2] Brainfuck loop: '[' and ']'"
-  let bfTest2 = "+[>+<-]"
-  let (mem2, labels2, err2) = bfToSubleqJ(bfTest2)
-  if err2.len > 0:
-    echo "ERROR: ", err2
+proc expectOutput(name, bf: string; expected: seq[int]; input: seq[int] = @[]) =
+  let tr = brainfuckToSubleq(bf, TapeCells)
+  var mem = tr.mem
+  let res = runSubleq(mem, input, 1_000_000)
+  if tr.error.len > 0 or res.fault.len > 0 or res.output != expected:
+    fail name, "got " & $res.output & " (err '" & tr.error & res.fault & "') want " & $expected
   else:
-    echo "  Compiled to ", mem2.len, " words"
-    echo "  Labels: ", labels2.len
+    inc passes
 
-  # Test 3: Hello World (simplified)
-  echo "\n[Test 3] Brainfuck: '+++' (three increments)"
-  let bfTest3 = "+++"
-  let (mem3, labels3, err3) = bfToSubleqJ(bfTest3)
-  if err3.len > 0:
-    echo "ERROR: ", err3
-  else:
-    echo "  Compiled to ", mem3.len, " words"
-    echo "  Key cells:"
-    echo "    Array cells [0..", bfTest3.len, "]: ", mem3[0..min(5, mem3.len-1)]
-    echo "    Special registers: ptr=", mem3[256], " -1=", mem3[257], " +1=", mem3[258]
+proc expectError(name, bf: string) =
+  if brainfuckToSubleq(bf, TapeCells).error.len == 0: fail name, "expected transpile error"
+  else: inc passes
 
-  # Test 4: Full Hello World (truncated for demo)
-  echo "\n[Test 4] Hello World (original BF code)"
-  let bfHello = HelloBF[0..50]  # First 50 chars
-  let (memH, labelsH, errH) = bfToSubleqJ(bfHello)
-  if errH.len > 0:
-    echo "ERROR: ", errH
-  else:
-    echo "  BF code length: ", bfHello.len
-    echo "  Compiled to: ", memH.len, " SUBLEQ words"
-    let cap = if memH.len > 256: memH[256] else: 0
-    echo "  Array capacity: ", cap
+proc ords(s: string): seq[int] =
+  for ch in s: result.add ord(ch)
 
-  # Test 5: Verify round-trip consistency
-  echo "\n[Test 5] Consistency check - multiple compilations"
-  let bfCode = "++[>++<-]"
-  let (m1, l1, e1) = bfToSubleqJ(bfCode)
-  let (m2, l2, e2) = bfToSubleqJ(bfCode)
-  if m1 == m2 and e1 == e2:
-    echo "  ✓ Deterministic: multiple compilations produce identical output"
-  else:
-    echo "  ✗ Non-deterministic compilation detected!"
+# ── hand-written programs (also prove the tape pointer is actually honoured) ──
+expectOutput "inc-out", "+++.", @[3]
+expectOutput "ptr-moves", ">+>++<<.>.>.", @[0, 1, 2]
+expectOutput "ptr-independent-cells", "+>++>+++<<.>.>.", @[1, 2, 3]
+expectOutput "negative-cell", "-.", @[-1]
+expectOutput "zero-skip-loop", "[+++.]+.", @[1]
+expectOutput "negative-loop", "---[+]>.", @[0]
+expectOutput "move-loop", "+++[->++<]>.", @[6]
+expectOutput "nested", "++[>++[>++<-]<-]>>.", @[8]
+expectOutput "cat", ",[.,]", ords("abc"), ords("abc")
+expectOutput "hello", HelloBF, ords("Hello World!\n")
+expectError "unmatched-close", "+]"
+expectError "unmatched-open", "[+"
 
-  echo "\n╔════════════════════════════════════════════════════════════╗"
-  echo "║  All tests completed                                       ║"
-  echo "╚════════════════════════════════════════════════════════════╝"
+# determinism
+block:
+  let a = brainfuckToSubleq(HelloBF, TapeCells)
+  let b = brainfuckToSubleq(HelloBF, TapeCells)
+  if a.mem != b.mem or a.tapeBase != b.tapeBase: fail "determinism", "compiles differ"
+  else: inc passes
 
-when isMainModule:
-  main()
+# differential comparisons on the hand-written set
+for bf in ["", "+", ">>+<<", "+++[>+++[>+<-]<-]", ",>,<[->+<]>.", "+[>+]", ">+++[<+++>-]<."]:
+  discard compare("diff:" & bf, bf, @[7, 9])
+
+# deterministic fuzz of balanced programs
+var seed: uint64 = 0x9E3779B97F4A7C15'u64
+proc rnd(n: int): int =
+  seed = seed * 6364136223846793005'u64 + 1442695040888963407'u64
+  int((seed shr 33) mod uint64(n))
+
+var compared = 0
+const alphabet = "+++---<<>>>[.,"
+for iter in 0 ..< 6000:
+  var prog = ""
+  var depth = 0
+  for k in 0 ..< 3 + rnd(40):
+    var ch = alphabet[rnd(alphabet.len)]
+    if ch == '[':
+      inc depth
+    elif ch == ']':
+      ch = '+'
+    prog.add ch
+    if depth > 0 and rnd(6) == 0:
+      prog.add ']'
+      dec depth
+  prog.add ']'.repeat(depth)
+  if compare("fuzz#" & $iter & ":" & prog, prog, @[3, 1, 4, 1, 5]):
+    inc compared
+
+if compared < 500:
+  fail "fuzz-coverage", "only " & $compared & " fuzz programs were comparable"
+
+echo "passed: ", passes, "  failed: ", failures, "  fuzz comparable: ", compared
+if failures > 0: quit 1
