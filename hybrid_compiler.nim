@@ -154,8 +154,9 @@ proc compileToSubleq*(sourceCode: string; tapeCells = 256): tuple[result: Transp
   return (tr, tr.error)
 
 when isMainModule:
-  let bfCode = "+++."
-  let (tr, err) = compileToSubleq(bfCode, 64)
+  # Example: Hello World in Brainfuck
+  let helloWorld = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+  let (tr, err) = compileToSubleq(helloWorld, 256)
 
   if err.len > 0:
     echo "Compilation error: " & err
@@ -164,8 +165,14 @@ when isMainModule:
   var mem = tr.mem
   let result = runSubleq(mem)
 
-  echo "Output: " & $result.output
   if result.halted:
-    echo "Halted successfully"
+    echo "Output: "
+    for val in result.output:
+      if val >= 32 and val < 127:
+        stdout.write(chr(val))
+      else:
+        stdout.write("[" & $val & "]")
+    stdout.write("\n")
   else:
     echo "Fault: " & result.fault
+    quit 1

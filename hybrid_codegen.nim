@@ -30,9 +30,10 @@ proc codegenBrainfuck*(prog: Program; tapeCells = 256): Transpiled =
   proc here(): int = CODE0 + code.len
 
   proc tri(a, b: int; c = NEXT) =
+    let at = here()
     code.add a
     code.add b
-    code.add (if c == NEXT: here() + 3 else: c)
+    code.add (if c == NEXT: at + 3 else: c)
 
   proc viaPtr(a, b, field: int) =
     let target = here() + 3 + field
