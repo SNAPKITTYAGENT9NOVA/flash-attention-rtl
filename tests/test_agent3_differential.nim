@@ -3,7 +3,7 @@
 # If ANY mismatch, it's a compiler bug
 
 import std/[strutils, tables]
-import subleq_bf
+import ../src/subleq_bf
 
 type
   DifferentialTest* = object

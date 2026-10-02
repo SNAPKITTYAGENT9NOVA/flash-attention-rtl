@@ -8,7 +8,7 @@
 # Run from the repository root.
 
 import std/[os, strutils]
-import subleq_bf
+import ../src/subleq_bf
 
 const
   VecFile = "sim/fa/vectors/fa_vectors.txt"

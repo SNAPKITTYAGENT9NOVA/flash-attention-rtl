@@ -1,9 +1,9 @@
 # Test suite for hybrid compiler code generator
 # Validates compiled SUBLEQ matches reference interpreter output
 
-import hybrid_ast
-import hybrid_codegen
-import subleq_bf
+import ../src/hybrid_ast
+import ../src/hybrid_codegen
+import ../src/subleq_bf
 
 const TapeCells = 64
 

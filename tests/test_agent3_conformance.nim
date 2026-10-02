@@ -2,7 +2,7 @@
 # Complete test coverage: all features, paradigms, and properties
 
 import std/[strutils, tables, sequtils]
-import subleq_bf
+import ../src/subleq_bf
 
 type
   ConformanceTest* = object

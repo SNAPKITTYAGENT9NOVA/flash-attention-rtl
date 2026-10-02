@@ -2,7 +2,7 @@
 # on output, final tape contents and final pointer.
 
 import std/strutils
-import subleq_bf
+import ../src/subleq_bf
 
 const TapeCells = 64
 const HelloBF = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."

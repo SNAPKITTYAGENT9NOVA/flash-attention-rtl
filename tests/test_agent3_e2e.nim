@@ -3,8 +3,8 @@
 # Critical: all tests flow through: SOURCE → AGENT1 → AGENT3 → AGENT2 → VM
 
 import std/[strutils, tables, algorithm, sequtils]
-import subleq_bf
-import hybrid_compiler
+import ../src/subleq_bf
+import ../src/hybrid_compiler
 
 type
   E2ETest* = object

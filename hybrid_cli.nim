@@ -2,7 +2,7 @@
 # Commands: hybridc [--option] program.hy [input]
 
 import std/[os, parseopt, strutils, sequtils]
-import subleq_bf
+import src/subleq_bf
 
 type
   CLICommand* = enum

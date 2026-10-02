@@ -1,10 +1,30 @@
 # Nim compiled binaries
-refuge
-test_bf_to_subleq_j
+bin/
+# Compiled executables (no extension) in src/ and tests/
+src/befunge_codegen
+src/hybrid_ast
+src/hybrid_codegen
+src/hybrid_compiler
+src/hybrid_ir
+src/hybrid_lexer
+src/hybrid_normalizer
+src/hybrid_parser
+src/parser_pipeline
+src/subleq_bf
+tests/test_agent3_conformance
+tests/test_agent3_determinism
+tests/test_agent3_differential
+tests/test_agent3_e2e
+tests/test_bf_to_subleq_j
+tests/test_fa_opcode
+tests/test_hybrid_codegen
+tests/test_hybrid_compiler
+tests/test_hybrid_frontend
+tests/test_language_detect
+# Root-level executables
 consolidated_agent
-hybrid_compiler
-test_hybrid_codegen
-test_hybrid_frontend
+hybrid_cli
+refuge
 
 # Runtime artifacts
 *.chk
@@ -26,11 +46,8 @@ nimcache/
 .DS_Store
 
 # FA verification artifacts
-test_fa_opcode
 sim/fa/work_*/
 __pycache__/
 
 # C stack build output
 cstack/build/
-befunge_codegen
-parser_pipeline
